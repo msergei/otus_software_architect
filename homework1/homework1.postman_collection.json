@@ -1,0 +1,32 @@
+{
+	"info": {
+		"_postman_id": "f3b56874-50ba-49e8-985b-6d2cdd457dc2",
+		"name": "homework1",
+		"description": "Otus homework 1",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://arch.homework/otusapp/mironov/health",
+					"protocol": "http",
+					"host": [
+						"arch",
+						"homework"
+					],
+					"path": [
+						"otusapp",
+						"mironov",
+						"health"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crud-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: crud-server-app
+  template:
+    metadata:
+      labels:
+        app: crud-server-app
+    spec:
+      containers:
+      - name: crudserver
+        image: msergei/crud-server:0.2
+        ports:
+          - name: web
+            containerPort: 8000
+        livenessProbe:
+          httpGet:
+            port: 8000
+            path: /api/v1/users/
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            port: 8000
+            path: /api/v1/users/
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        envFrom:
+          - configMapRef:
+              name: crud-config
+          - secretRef:
+              name: crud-secret

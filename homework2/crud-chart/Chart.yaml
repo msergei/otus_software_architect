@@ -1,0 +1,16 @@
+apiVersion: v2
+name: crud-chart
+description: Test chart for simple crud api server
+
+type: application
+
+version: "0.1.0"
+appVersion: "0.3"
+
+dependencies:
+  - name: postgresql
+    version: 9.X.X
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - crud-database

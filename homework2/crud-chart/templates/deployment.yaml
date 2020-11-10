@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "crud-chart.fullname" . }}
+  labels:
+    {{- include "crud-chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "crud-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "crud-chart.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      initContainers:
+        - name: {{ .Chart.Name }}-check-db-ready
+          image: {{ .Values.image.check_db }}
+          envFrom:
+            - configMapRef:
+                name: crud-config
+            - secretRef:
+                name: crud-secret
+          command:
+            - sh
+            - "-c"
+            - |
+              until pg_isready -h $PSQL_HOST  -p  $POSTGRES_PORT;
+              do echo waiting for database; sleep 2; done;
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          ports:
+            - name: django
+              containerPort: 8000
+          livenessProbe:
+            httpGet:
+              port: 8000
+              path: /api/v1/users/
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              port: 8000
+              path: /api/v1/users/
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          envFrom:
+            - configMapRef:
+                name: crud-config
+            - secretRef:
+                name: crud-secret

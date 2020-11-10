@@ -1,0 +1,227 @@
+{
+	"info": {
+		"_postman_id": "fff80d24-d2aa-49b7-b7fe-0c5398ca6648",
+		"name": "homework2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "e53196c5-094a-44d9-972b-03ea8081b110",
+						"exec": [
+							"var responseJSON = JSON.parse(responseBody)",
+							"pm.collectionVariables.set(\"user_id\", responseJSON[\"id\"])",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"some_name\",\n    \"last_name\": \"\",\n    \"phone\": \"\",\n    \"email\": \"\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://{{base_url}}:{{port}}/otusapp/mironov/api/v1/users/",
+					"protocol": "http",
+					"host": [
+						"{{base_url}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"otusapp",
+						"mironov",
+						"api",
+						"v1",
+						"users",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "b898643c-ab28-4b6a-ba7f-509248469f36",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://{{base_url}}:{{port}}/otusapp/mironov/api/v1/users/{{user_id}}/",
+					"protocol": "http",
+					"host": [
+						"{{base_url}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"otusapp",
+						"mironov",
+						"api",
+						"v1",
+						"users",
+						"{{user_id}}",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Modify user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "4fd4a795-c011-4aa6-9f76-39581a04e3e4",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"last_name\": \"some_last_name\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://{{base_url}}:{{port}}/otusapp/mironov/api/v1/users/{{user_id}}/",
+					"protocol": "http",
+					"host": [
+						"{{base_url}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"otusapp",
+						"mironov",
+						"api",
+						"v1",
+						"users",
+						"{{user_id}}",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "4fd4a795-c011-4aa6-9f76-39581a04e3e4",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://{{base_url}}:{{port}}/otusapp/mironov/api/v1/users/{{user_id}}/",
+					"protocol": "http",
+					"host": [
+						"{{base_url}}"
+					],
+					"port": "{{port}}",
+					"path": [
+						"otusapp",
+						"mironov",
+						"api",
+						"v1",
+						"users",
+						"{{user_id}}",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "286e2c14-b697-432e-ac80-347bfa346ae1",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "a6f6973f-5b08-4571-b440-afa7df711b4f",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "3fe828b7-295c-431c-860e-4a16393f589a",
+			"key": "user_id",
+			"value": ""
+		},
+		{
+			"id": "4d629cb2-adfd-40c9-a093-37d953dbbe62",
+			"key": "base_url",
+			"value": "arch.homework"
+		},
+		{
+			"id": "a2946eee-5bd6-4ebf-8e64-e5ec8d03b767",
+			"key": "port",
+			"value": "80"
+		}
+	],
+	"protocolProfileBehavior": {}
+}

@@ -4,10 +4,10 @@ Software arhitect course, homework 2
 ### URLs
 
 ```
-POST http:// http://arch.homework/otusapp/mironov/api/v1/users/
-GET http:// http://arch.homework/otusapp/mironov/api/v1/users/<id>/
-PATCH http:// http://arch.homework/otusapp/mironov/api/v1/users/<id>/
-DELETE http:// http://arch.homework/otusapp/mironov/api/v1/users/<id>/
+POST http://arch.homework/otusapp/mironov/api/v1/users/
+GET http://arch.homework/otusapp/mironov/api/v1/users/<id>/
+PATCH http://arch.homework/otusapp/mironov/api/v1/users/<id>/
+DELETE http://arch.homework/otusapp/mironov/api/v1/users/<id>/
 ```
 
 ### How to deploy chart?

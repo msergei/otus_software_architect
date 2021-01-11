@@ -1,16 +1,54 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: server-deployment
+  name: server-v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: simple-server-app
+      app: simple-server
+      version: v1
   template:
     metadata:
       labels:
-        app: simple-server-app
+        app: simple-server
+        version: v1
+    spec:
+      containers:
+      - name: serverbox
+        image: msergei/simple-server:v2
+        ports:
+          - name: web
+            containerPort: 5000
+        livenessProbe:
+          httpGet:
+            port: 5000
+            path: /health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 2
+        readinessProbe:
+          httpGet:
+            port: 5000
+            path: /health
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simple-server
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: simple-server
+        version: v2
     spec:
       containers:
       - name: serverbox

@@ -1,4 +1,4 @@
-# otus_arch_homework1
+# otus_software_acrhitect
 Software arhitect course, homework 2
 
 ### URLs
@@ -16,4 +16,4 @@ DELETE http://arch.homework/otusapp/mironov/api/v1/users/<id>/
 
 
 ### How to run postman tests with newman?
-```newman run homework1.postman_collection.json```
+```newman run homework2.postman_collection.json```

@@ -1,4 +1,4 @@
-# otus_arch_homework1
+# otus_software_architect
 Software arhitect course, homework 1
 
 ### URL

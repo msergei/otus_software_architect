@@ -5,7 +5,8 @@ Software arhitect course, homework 4
 ```shell script
 minikube start \
 --cpus=4 --memory=5g \
---cni=flannel \
+--kubernetes-version v1.19.3 \
+--cni=flannel --vm=true --driver=hyperkit \
 --extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,\
 DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodPreset \
 --extra-config=apiserver.authorization-mode=Node,RBAC

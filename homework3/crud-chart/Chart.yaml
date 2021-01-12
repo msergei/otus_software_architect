@@ -1,0 +1,20 @@
+apiVersion: v2
+name: crud-chart
+description: Test chart for simple crud api server
+
+type: application
+
+version: "0.4.0"
+appVersion: "0.4"
+
+dependencies:
+  - name: postgresql
+    version: 9.X.X
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - crud-database
+
+  - name: prometheus-postgres-exporter
+    version: 1.6.0
+    repository: https://prometheus-community.github.io/helm-charts

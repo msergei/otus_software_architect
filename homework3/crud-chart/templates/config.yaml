@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crud-config
+data:
+  POSTGRES_DB: {{ .Values.postgresql.postgresqlDatabase | quote }}
+  POSTGRES_USER: {{ .Values.postgresql.postgresqlUsername | quote }}
+  POSTGRES_PORT: {{ .Values.postgresql.servicePort | quote }}
+  PSQL_HOST: "{{ .Release.Name }}-postgresql"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: crud-secret
+type: Opaque
+data:
+  POSTGRES_PASSWORD: {{ .Values.postgresql.postgresqlPassword | b64enc | quote }}

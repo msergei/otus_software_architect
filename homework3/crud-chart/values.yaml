@@ -1,0 +1,65 @@
+replicaCount: 2
+
+image:
+  repository: msergei/crud-server
+  check_db: postgres:alpine
+
+service:
+  type: NodePort
+  port: 8000
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  hosts:
+    - host: arch.homework
+      paths:
+        - /otusapp/mironov($|/)(.*)
+      serviceName: crud-service
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+postgresql:
+  enabled: true
+  postgresqlHost: "postgres"
+  postgresqlUsername: myuser
+  postgresqlPassword: passwd
+  postgresqlDatabase: myapp
+  servicePort: 5432
+
+metrics:
+  serviceMonitor:
+    enabled: true
+
+prometheus-postgres-exporter:
+  serviceMonitor:
+    # When set true then use a ServiceMonitor to configure scraping
+    enabled: true
+    # Set the namespace the ServiceMonitor should be deployed
+    namespace: monitoring
+    # Set how frequently Prometheus should scrape
+    # interval: 30s
+    # Set path to cloudwatch-exporter telemtery-path
+    telemetryPath: /metrics
+    # Set labels for the ServiceMonitor, use this to define your scrape label for Prometheus Operator
+    # labels:
+    # Set timeout for scrape
+    # timeout: 10s
+    # Set of labels to transfer from the Kubernetes Service onto the target
+    # targetLabels: []
+    # MetricRelabelConfigs to apply to samples before ingestion
+    # metricRelabelings: []
+  config:
+    autoDiscoverDatabases: true
+    datasource:
+      # Specify one of both datasource or datasourceSecret
+      host: myapp-postgresql
+      user: myuser
+      # Only one of password and passwordSecret can be specified
+      password: passwd
+      port: "5432"
+      database: "myapp"

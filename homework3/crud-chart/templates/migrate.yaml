@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-migrate" (include "crud-chart.fullname" .) }}
+spec:
+  template:
+    metadata:
+      name: {{ printf "%s-migrate" (include "crud-chart.fullname" .) }}
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: {{ printf "%s-migrate-check-db" (include "crud-chart.fullname" .) }}
+        image: {{ .Values.image.check_db }}
+        envFrom:
+          - configMapRef:
+              name: crud-config
+          - secretRef:
+              name: crud-secret
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $PSQL_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: {{ printf "%s-migrate-job" (include "crud-chart.fullname" .) }}
+        envFrom:
+          - configMapRef:
+              name: crud-config
+          - secretRef:
+              name: crud-secret
+        image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+        command:
+          - ./manage.py
+          - migrate

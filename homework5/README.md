@@ -28,6 +28,8 @@ helm install nginx ingress-nginx/ingress-nginx
 
 ### Deploy services
 
+Namespace: default
+
 ```shell
 kubectl apply -f deploy-services.yml
 ```

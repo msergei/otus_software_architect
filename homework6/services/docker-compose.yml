@@ -1,0 +1,85 @@
+version: '3.6'
+
+volumes:
+  psql: {}
+
+services:
+  db:
+    build:
+      context: .
+    image: msergei/postgres:v0.1
+    volumes:
+      - psql:/var/lib/postgresql/data
+      - ./postgres_init.sh:/docker-entrypoint-initdb.d/init.sh
+    env_file:
+      - db.env
+    healthcheck:
+      test: [ "CMD-SHELL", "cat /var/lib/postgresql/data/ready" ]
+      interval: 10s
+      timeout: 10s
+      retries: 100
+
+  auth:
+    build:
+      context: ./auth/
+    image: msergei/auth-service:v0.5
+    command: sh -c "./manage.py migrate && gunicorn uauth.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8002:8000
+    volumes:
+      - ./auth/:/app/
+    links:
+      - db:postgres
+      - billing:billing
+    env_file:
+      - auth/db.env
+    depends_on:
+      - billing
+
+  billing:
+    build:
+      context: ./billing/
+    image: msergei/billing-service:v0.2
+    command: sh -c "sleep 10; ./manage.py migrate && gunicorn billing.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8001:8000
+    volumes:
+      - ./billing/:/app/
+    links:
+      - db:postgres
+    env_file:
+      - billing/db.env
+
+  order:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.2
+    command: sh -c "sleep 10; ./manage.py migrate && gunicorn order.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8000:8000
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - billing:billing
+      - notify:notify
+    env_file:
+      - order/db.env
+    depends_on:
+      - billing
+      - auth
+      - notify
+
+  notify:
+    build:
+      context: ./notify/
+    image: msergei/notify-service:v0.2
+    command: sh -c "sleep 10; ./manage.py migrate && gunicorn notify.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8003:8000
+    volumes:
+      - ./notify/:/app/
+    links:
+      - db:postgres
+    env_file:
+      - notify/db.env

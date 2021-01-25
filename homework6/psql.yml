@@ -1,0 +1,354 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  labels:
+    app: auth
+data:
+  POSTGRES_DB: "auth_db"
+  POSTGRES_USER: "user"
+  POSTGRES_PASSWORD: "user"
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "uauth.settings.prod"
+  BILLING_SERVICE: "billing-service.default"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-config
+  labels:
+    app: billing
+data:
+  POSTGRES_DB: "billing_db"
+  POSTGRES_USER: "user"
+  POSTGRES_PASSWORD: "user"
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "billing.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notify-config
+  labels:
+    app: notify
+data:
+  POSTGRES_DB: "notify_db"
+  POSTGRES_USER: "user"
+  POSTGRES_PASSWORD: "user"
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "notify.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  labels:
+    app: order
+data:
+  POSTGRES_DB: "order_db"
+  POSTGRES_USER: "user"
+  POSTGRES_PASSWORD: "user"
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "order.settings.prod"
+  BILLING_SERVICE: "billing-service.default"
+  NOTIFY_SERVICE: "notify-service.default"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: auth-postgres-pv-volume
+  labels:
+    type: local
+    app: auth-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data/auth"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: billing-postgres-pv-volume
+  labels:
+    type: local
+    app: billing-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data/billing"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: notify-postgres-pv-volume
+  labels:
+    type: local
+    app: notify-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data/notify"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: order-postgres-pv-volume
+  labels:
+    type: local
+    app: order-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data/order"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: auth-postgres-pv-claim
+  labels:
+    app: auth-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: billing-postgres-pv-claim
+  labels:
+    app: billing-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: notify-postgres-pv-claim
+  labels:
+    app: notify-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: order-postgres-pv-claim
+  labels:
+    app: order-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-postgres
+  template:
+    metadata:
+      labels:
+        app: auth-postgres
+    spec:
+      containers:
+        - name: auth-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: auth-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: auth-postgres-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-postgres
+  template:
+    metadata:
+      labels:
+        app: billing-postgres
+    spec:
+      containers:
+        - name: billing-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: billing-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: billing-postgres-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notify-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notify-postgres
+  template:
+    metadata:
+      labels:
+        app: notify-postgres
+    spec:
+      containers:
+        - name: notify-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: notify-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: notify-postgres-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-postgres
+  template:
+    metadata:
+      labels:
+        app: order-postgres
+    spec:
+      containers:
+        - name: order-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: order-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: order-postgres-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-postgres
+  labels:
+    app: auth-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: auth-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-postgres
+  labels:
+    app: billing-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: billing-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-postgres
+  labels:
+    app: order-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: order-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notify-postgres
+  labels:
+    app: notify-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: notify-postgres

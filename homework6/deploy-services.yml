@@ -1,0 +1,618 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  labels:
+    app: auth
+data:
+  POSTGRES_DB: auth
+  POSTGRES_USER: auth
+  POSTGRES_PASSWORD: auth
+  POSTGRES_HOST: "auth-postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "uauth.settings.prod"
+  BILLING_SERVICE: "billing-service.default"
+  BILLING_PORT: "8001"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-config
+  labels:
+    app: billing
+data:
+  POSTGRES_DB: billing
+  POSTGRES_USER: billing
+  POSTGRES_PASSWORD: billing
+  POSTGRES_HOST: "billing-postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "billing.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notify-config
+  labels:
+    app: notify
+data:
+  POSTGRES_DB: notify
+  POSTGRES_USER: notify
+  POSTGRES_PASSWORD: notify
+  POSTGRES_HOST: "notify-postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "notify.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  labels:
+    app: order
+data:
+  POSTGRES_DB: order
+  POSTGRES_USER: order
+  POSTGRES_PASSWORD: order
+  POSTGRES_HOST: "order-postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "order.settings.prod"
+  BILLING_SERVICE: "billing-service.default"
+  BILLING_PORT: "8001"
+  NOTIFY_SERVICE: "notify-service.default"
+  NOTIFY_PORT: "8002"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: auth-postgres-pv-volume
+  labels:
+    type: local
+    app: auth-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/tmp/auth2"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: billing-postgres-pv-volume
+  labels:
+    type: local
+    app: billing-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/tmp/billing2"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: notify-postgres-pv-volume
+  labels:
+    type: local
+    app: notify-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/tmp/notify2"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: order-postgres-pv-volume
+  labels:
+    type: local
+    app: order-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/tmp/order2"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: auth-postgres-pv-claim
+  labels:
+    app: auth-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: billing-postgres-pv-claim
+  labels:
+    app: billing-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: notify-postgres-pv-claim
+  labels:
+    app: notify-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: order-postgres-pv-claim
+  labels:
+    app: order-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-postgres
+  template:
+    metadata:
+      labels:
+        app: auth-postgres
+    spec:
+      containers:
+        - name: auth-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: auth-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: auth-postgres-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-postgres
+  template:
+    metadata:
+      labels:
+        app: billing-postgres
+    spec:
+      containers:
+        - name: billing-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: billing-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: billing-postgres-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notify-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notify-postgres
+  template:
+    metadata:
+      labels:
+        app: notify-postgres
+    spec:
+      containers:
+        - name: notify-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: notify-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: notify-postgres-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-postgres
+  template:
+    metadata:
+      labels:
+        app: order-postgres
+    spec:
+      containers:
+        - name: order-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: order-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: order-postgres-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-postgres
+  labels:
+    app: auth-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: auth-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-postgres
+  labels:
+    app: billing-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: billing-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-postgres
+  labels:
+    app: order-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: order-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notify-postgres
+  labels:
+    app: notify-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: notify-postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: auth
+        version: v0.1
+    spec:
+      initContainers:
+      - name: auth-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: auth-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: auth
+        image: msergei/auth-service:v0.5
+        imagePullPolicy: "IfNotPresent"
+        ports:
+          - name: auth-port
+            containerPort: 8000
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn uauth.wsgi -b 0.0.0.0:8000 --workers=4;
+        envFrom:
+          - configMapRef:
+              name: auth-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: billing
+        version: v0.1
+    spec:
+      initContainers:
+      - name: billing-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: billing-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: billing
+        image: msergei/billing-service:v0.2
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn billing.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: billing-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: billing-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notify
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: notify
+        version: v0.1
+    spec:
+      initContainers:
+      - name: notify-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: notify-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: notify
+        image: msergei/notify-service:v0.2
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn notify.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: notify-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: notify-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: order
+        version: v0.1
+    spec:
+      initContainers:
+      - name: order-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: order-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: order
+        image: msergei/order-service:v0.2
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn order.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: order-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: order-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: auth-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+spec:
+  selector:
+    app: billing
+  ports:
+    - protocol: TCP
+      port: 8001
+      targetPort: billing-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notify-service
+spec:
+  selector:
+    app: notify
+  ports:
+    - protocol: TCP
+      port: 8002
+      targetPort: notify-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order
+  ports:
+    - protocol: TCP
+      port: 8003
+      targetPort: order-port
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: hello-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          - path: /api/auth/users/.*
+            backend:
+              serviceName: auth-service
+              servicePort: 8000
+          - path: /api/token/.*
+            backend:
+              serviceName: auth-service
+              servicePort: 8000
+          - path: /api/accounts/.*
+            backend:
+              serviceName: billing-service
+              servicePort: 8001
+          - path: /api/notifications/.*
+            backend:
+              serviceName: notify-service
+              servicePort: 8002
+          - path: /api/orders/.*
+            backend:
+              serviceName: order-service
+              servicePort: 8003

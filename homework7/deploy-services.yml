@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  labels:
+    app: order
+data:
+  POSTGRES_DB: order
+  POSTGRES_USER: order
+  POSTGRES_PASSWORD: order
+  POSTGRES_HOST: "order-postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "order.settings.prod"
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: order-postgres-pv-volume
+  labels:
+    type: local
+    app: order-postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/tmp/order"
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: order-postgres-pv-claim
+  labels:
+    app: order-postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-postgres
+  template:
+    metadata:
+      labels:
+        app: order-postgres
+    spec:
+      containers:
+        - name: order-postgres
+          image: postgres:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: order-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: order-postgres-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-postgres
+  labels:
+    app: order-postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: order-postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: order
+        version: v0.1
+    spec:
+      initContainers:
+      - name: order-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: order-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: order
+        image: msergei/order-service:v0.3
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn order.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: order-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: order-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order
+  ports:
+    - protocol: TCP
+      port: 8003
+      targetPort: order-port
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: hello-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          - path: /api/orders/.*
+            backend:
+              serviceName: order-service
+              servicePort: 8003

@@ -1,0 +1,164 @@
+{
+	"info": {
+		"_postman_id": "9af5272a-48b8-4a27-b11a-da196e3fb025",
+		"name": "homework7",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create order success",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Test order id\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get(\"order_id\"));",
+							"});",
+							"",
+							"tests[\"[INFO] Request: \" + JSON.stringify(request)] = true;",
+							"tests[\"[INFO] Response: \" + responseBody] = true;"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.collectionVariables.set(\"order_id\", _.random(0, 100000000000));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": {{order_id}},\n    \"amount\": 100,\n    \"username\": \"some_user\",\n    \"details\": {\"items\": [1, 2, 3]}   \n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://{{baseUrl}}:{{order_port}}/api/orders/",
+					"protocol": "http",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"port": "{{order_port}}",
+					"path": [
+						"api",
+						"orders",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create order success fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"tests[\"[INFO] Request: \" + JSON.stringify(request)] = true;",
+							"tests[\"[INFO] Response: \" + responseBody] = true;"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": {{order_id}},\n    \"amount\": 100,\n    \"username\": \"some_user\",\n    \"details\": {\"items\": [1, 2, 3]} \n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://{{baseUrl}}:{{order_port}}/api/orders/",
+					"protocol": "http",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"port": "{{order_port}}",
+					"path": [
+						"api",
+						"orders",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "arch.homework"
+		},
+		{
+			"key": "order_port",
+			"value": "80"
+		},
+		{
+			"key": "order_id",
+			"value": ""
+		}
+	]
+}

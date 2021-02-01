@@ -7,7 +7,7 @@ services:
   db:
     build:
       context: .
-    image: msergei/postgres:v0.1
+    image: msergei/postgres:v0.2
     volumes:
       - psql:/var/lib/postgresql/data
       - ./postgres_init.sh:/docker-entrypoint-initdb.d/init.sh

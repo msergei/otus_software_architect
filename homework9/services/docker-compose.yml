@@ -1,0 +1,137 @@
+version: '3.6'
+
+volumes:
+  psql: {}
+  redis: {}
+
+services:
+  db:
+    build:
+      context: .
+    image: msergei/postgres:v0.2
+    volumes:
+      - psql:/var/lib/postgresql/data
+      - ./postgres_init.sh:/docker-entrypoint-initdb.d/init.sh
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: auth,order,billing,items,slots
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+    healthcheck:
+      test: [ "CMD-SHELL", "cat /var/lib/postgresql/data/ready" ]
+      interval: 10s
+      timeout: 10s
+      retries: 100
+
+  auth:
+    build:
+      context: ./auth/
+    image: msergei/auth-service:v0.6
+    command: sh -c "sleep 5 && ./manage.py makemigrations && ./manage.py migrate && gunicorn uauth.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8002:8000
+    volumes:
+      - ./auth/:/app/
+    links:
+      - db:postgres
+      - billing:billing
+    env_file:
+      - auth/db.env
+    depends_on:
+      - billing
+
+  billing:
+    build:
+      context: ./billing/
+    image: msergei/billing-service:v0.3
+    command: sh -c "sleep 5 && ./manage.py makemigrations && ./manage.py migrate && gunicorn billing.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8001:8000
+    volumes:
+      - ./billing/:/app/
+    links:
+      - db:postgres
+    env_file:
+      - billing/db.env
+
+  item:
+    build:
+      context: ./item/
+    image: msergei/item-service:v0.2
+    command: sh -c "sleep 5 && ./manage.py makemigrations && ./manage.py migrate && gunicorn item.wsgi -b 0.0.0.0:8000 --workers=2 --timeout 10;"
+    volumes:
+      - ./item/:/app/
+    ports:
+      - 8004:8000
+    links:
+      - db:postgres
+    env_file:
+      - item/db.env
+
+  slot:
+    build:
+      context: ./slot/
+    image: msergei/slot-service:v0.1
+    command: sh -c "sleep 5 && ./manage.py makemigrations && ./manage.py migrate && gunicorn slot.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    volumes:
+      - ./slot/:/app/
+    ports:
+      - 8005:8000
+    links:
+      - db:postgres
+    env_file:
+      - slot/db.env
+
+  order:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.5
+    command: sh -c "sleep 5 && ./manage.py makemigrations && ./manage.py migrate && gunicorn order.wsgi -b 0.0.0.0:8000 --workers=4 --timeout 10;"
+    ports:
+      - 8000:8000
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+      - billing:billing
+      - item:item
+      - slot:slot
+    env_file:
+      - order/db.env
+    depends_on:
+      - auth
+      - billing
+      - item
+      - redis
+      - slot
+
+  order-mediator:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.4
+    command: sh -c "sleep 10; ./manage.py order_mediator;"
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+      - billing:billing
+      - item:item
+      - slot:slot
+    env_file:
+      - order/db.env
+    depends_on:
+      - auth
+      - billing
+      - item
+      - redis
+      - slot
+      - order
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis:/data
+    restart: always

@@ -1,0 +1,533 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  labels:
+    app: postgres
+data:
+  POSTGRES_MULTIPLE_DATABASES: auth,order,billing,items,slots
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: user
+---
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: postgres-pv-volume
+  labels:
+    type: local
+    app: postgres
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/tmp/test"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: postgres-pv-claim
+  labels:
+    app: postgres
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: msergei/postgres:v0.2
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+          readinessProbe:
+            exec:
+              command: [ "psql", "-w", "-U", "user", "-d", "postgres", "-c", "SELECT 1" ]
+            initialDelaySeconds: 15
+            timeoutSeconds: 2
+          livenessProbe:
+            exec:
+              command: [ "psql", "-w", "-U", "user", "-d", "postgres", "-c", "SELECT 1" ]
+            initialDelaySeconds: 45
+            timeoutSeconds: 2
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+   app: postgres
+---
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  type: NodePort
+  ports:
+   - port: 6379
+  selector:
+   app: redis
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  labels:
+    app: auth
+data:
+  POSTGRES_DB: auth
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: user
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "uauth.settings.prod"
+  BILLING_SERVICE: "billing-service.default"
+  BILLING_PORT: "8001"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-config
+  labels:
+    app: billing
+data:
+  POSTGRES_DB: billing
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: user
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "billing.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: items-config
+  labels:
+    app: items
+data:
+  POSTGRES_DB: items
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: user
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "item.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slots-config
+  labels:
+    app: slots
+data:
+  POSTGRES_DB: slots
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: user
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "slot.settings.prod"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  labels:
+    app: order
+data:
+  POSTGRES_DB: order
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: user
+  POSTGRES_HOST: "postgres.default"
+  POSTGRES_PORT: "5432"
+  DJANGO_SETTINGS_MODULE: "order.settings.prod"
+  BILLING_SERVICE: "billing-service.default"
+  BILLING_PORT: "8001"
+  ITEM_SERVICE: "items-service.default"
+  ITEM_PORT: "8002"
+  DELIVERY_SERVICE: "slots-service.default"
+  DELIVERY_PORT: "8003"
+  REDIS_HOST: "redis.default"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: auth
+        version: v0.1
+    spec:
+      initContainers:
+      - name: auth-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: auth-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: auth
+        image: msergei/auth-service:v0.6
+        imagePullPolicy: "IfNotPresent"
+        ports:
+          - name: auth-port
+            containerPort: 8000
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn uauth.wsgi -b 0.0.0.0:8000 --workers=4;
+        envFrom:
+          - configMapRef:
+              name: auth-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: billing
+        version: v0.1
+    spec:
+      initContainers:
+      - name: billing-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: billing-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: billing
+        image: msergei/billing-service:v0.3
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn billing.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: billing-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: billing-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: items
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: items
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: items
+        version: v0.1
+    spec:
+      initContainers:
+      - name: items-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: items-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: items
+        image: msergei/item-service:v0.2
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn item.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: items-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: items-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slots
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slots
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: slots
+        version: v0.1
+    spec:
+      initContainers:
+      - name: slots-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: slots-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: slots
+        image: msergei/slot-service:v0.1
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn slot.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: slots-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: slots-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order
+      version: v0.1
+  template:
+    metadata:
+      labels:
+        app: order
+        version: v0.1
+    spec:
+      initContainers:
+      - name: order-check-db-ready
+        image: postgres:alpine
+        envFrom:
+          - configMapRef:
+              name: order-config
+        command:
+          - sh
+          - "-c"
+          - |
+            until pg_isready -h $POSTGRES_HOST  -p  $POSTGRES_PORT;
+            do echo waiting for database; sleep 2; done;
+      containers:
+      - name: order
+        image: msergei/order-service:v0.5
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py migrate; gunicorn order.wsgi -b 0.0.0.0:8000 --workers=4;
+        ports:
+          - name: order-port
+            containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: order-config
+      - name: order-mediator
+        image: msergei/order-service:v0.5
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - sh
+          - "-c"
+          - |
+            ./manage.py order_mediator;
+        envFrom:
+          - configMapRef:
+              name: order-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: auth-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+spec:
+  selector:
+    app: billing
+  ports:
+    - protocol: TCP
+      port: 8001
+      targetPort: billing-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: items-service
+spec:
+  selector:
+    app: items
+  ports:
+    - protocol: TCP
+      port: 8002
+      targetPort: items-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slots-service
+spec:
+  selector:
+    app: slots
+  ports:
+    - protocol: TCP
+      port: 8003
+      targetPort: slots-port
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order
+  ports:
+    - protocol: TCP
+      port: 8004
+      targetPort: order-port
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: hello-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          - path: /api/auth/users/.*
+            backend:
+              serviceName: auth-service
+              servicePort: 8000
+          - path: /api/token/.*
+            backend:
+              serviceName: auth-service
+              servicePort: 8000
+          - path: /api/accounts/.*
+            backend:
+              serviceName: billing-service
+              servicePort: 8001
+          - path: /api/orders/.*
+            backend:
+              serviceName: order-service
+              servicePort: 8004

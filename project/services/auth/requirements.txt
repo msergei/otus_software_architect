@@ -1,0 +1,8 @@
+Django
+djangorestframework
+djangorestframework-simplejwt
+djoser
+psycopg2
+prometheus-client
+django-prometheus
+redis

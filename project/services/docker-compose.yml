@@ -1,0 +1,165 @@
+version: '3'
+
+volumes:
+  psql: {}
+  redis: {}
+
+services:
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis:/data
+    restart: always
+
+  db:
+    image: msergei/postgres:v0.2
+    volumes:
+      - psql:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: auth,order,notify
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+    healthcheck:
+      test: [ "CMD-SHELL", "cat /var/lib/postgresql/data/ready" ]
+      interval: 10s
+      timeout: 10s
+      retries: 100
+
+  auth:
+    build:
+      context: ./auth/
+    image: msergei/auth-service:v0.6
+    command: sh -c "sleep 10; ./manage.py migrate && gunicorn uauth.wsgi -b 0.0.0.0:8000 --workers=1 --timeout 10;"
+    ports:
+      - 8000:8000
+    volumes:
+      - ./auth/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - auth/db.env
+    depends_on:
+      - db
+      - redis
+
+  order:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.3
+    command: sh -c "sleep 10; ./manage.py migrate && gunicorn order.wsgi -b 0.0.0.0:8000 --workers=1 --timeout 10;"
+    ports:
+      - 8001:8000
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - order/db.env
+    depends_on:
+      - auth
+      - db
+      - redis
+
+  notify:
+    build:
+      context: ./notify/
+    image: msergei/notify-service:v0.3
+    command: sh -c "sleep 10; ./manage.py migrate && gunicorn notify.wsgi -b 0.0.0.0:8000 --workers=1 --timeout 10;"
+    ports:
+      - 8002:8000
+    volumes:
+      - ./notify/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - notify/db.env
+    depends_on:
+      - redis
+      - db
+      - auth
+      - order
+
+  mediator:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.3
+    command: sh -c "sleep 10; ./manage.py order_mediator;"
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - order/db.env
+    depends_on:
+      - auth
+      - db
+      - redis
+      - order
+
+  matcher:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.3
+    command: sh -c "sleep 10; ./manage.py order_matcher;"
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - order/db.env
+    depends_on:
+      - auth
+      - db
+      - redis
+      - order
+      - mediator
+
+  signer:
+    build:
+      context: ./order/
+    image: msergei/order-service:v0.3
+    command: sh -c "sleep 10; ./manage.py order_signer;"
+    volumes:
+      - ./order/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - order/db.env
+    depends_on:
+      - auth
+      - db
+      - redis
+      - order
+      - mediator
+      - matcher
+
+  fetcher:
+    build:
+      context: ./notify/
+    image: msergei/notify-service:v0.3
+    command: sh -c "sleep 10; ./manage.py fetch_events;"
+    volumes:
+      - ./notify/:/app/
+    links:
+      - db:postgres
+      - redis:redis
+    env_file:
+      - notify/db.env
+    depends_on:
+      - redis
+      - db
+      - auth
+      - order
+      - notify
+      - mediator
+      - signer
+      - matcher

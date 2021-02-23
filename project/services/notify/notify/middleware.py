@@ -7,13 +7,14 @@ from rest_framework_simplejwt.exceptions import InvalidToken
 def TokenValidateMiddleware(get_response):
     def middleware(request):
         try:
-            auth = JWTAuthentication()
-            header = auth.get_header(request)
-            raw_token = auth.get_raw_token(header)
-            validated_token = auth.get_validated_token(raw_token)
+            if not request.path == '/metrics':
+                auth = JWTAuthentication()
+                header = auth.get_header(request)
+                raw_token = auth.get_raw_token(header)
+                validated_token = auth.get_validated_token(raw_token)
 
-            field = settings.SIMPLE_JWT['USER_ID_FIELD']
-            setattr(request, field, validated_token.payload[field])
+                field = settings.SIMPLE_JWT['USER_ID_FIELD']
+                setattr(request, field, validated_token.payload[field])
         except Exception:
             raise InvalidToken('Credentials were not provided')
         else:

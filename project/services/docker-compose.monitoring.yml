@@ -15,13 +15,13 @@ services:
     volumes:
       - redis:/data
     restart: always
+    networks:
+      - monitor-net
 
   db:
     image: msergei/postgres:v0.2
     volumes:
       - psql:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
     environment:
       POSTGRES_MULTIPLE_DATABASES: auth,order,notify
       POSTGRES_USER: user
@@ -31,58 +31,60 @@ services:
       interval: 10s
       timeout: 10s
       retries: 100
+    networks:
+      - monitor-net
 
   auth:
-    build:
-      context: ./auth/
     image: msergei/auth-service:v0.6
     command: sh -c "sleep 10; ./manage.py migrate && gunicorn uauth.wsgi -b 0.0.0.0:8000 --workers=1 --timeout 10;"
     ports:
-      - 8000:8000
-    volumes:
-      - ./auth/:/app/
+      - 8003:8000
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - auth/db.env
+    environment:
+      - POSTGRES_DB=auth
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - db
       - redis
+    networks:
+      - monitor-net
 
   order:
-    build:
-      context: ./order/
     image: msergei/order-service:v0.3
     command: sh -c "sleep 10; ./manage.py migrate && gunicorn order.wsgi -b 0.0.0.0:8000 --workers=1 --timeout 10;"
     ports:
       - 8001:8000
-    volumes:
-      - ./order/:/app/
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - order/db.env
+    networks:
+      - monitor-net
+    environment:
+      - POSTGRES_DB=order
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - auth
       - db
       - redis
 
   notify:
-    build:
-      context: ./notify/
     image: msergei/notify-service:v0.3
     command: sh -c "sleep 10; ./manage.py migrate && gunicorn notify.wsgi -b 0.0.0.0:8000 --workers=1 --timeout 10;"
     ports:
       - 8002:8000
-    volumes:
-      - ./notify/:/app/
+    networks:
+      - monitor-net
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - notify/db.env
+    environment:
+      - POSTGRES_DB=notify
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - redis
       - db
@@ -90,54 +92,52 @@ services:
       - order
 
   mediator:
-    build:
-      context: ./order/
     image: msergei/order-service:v0.3
     command: sh -c "sleep 10; ./manage.py order_mediator;"
-    volumes:
-      - ./order/:/app/
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - order/db.env
+    environment:
+      - POSTGRES_DB=order
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - auth
       - db
       - redis
       - order
+    networks:
+      - monitor-net
 
   matcher:
-    build:
-      context: ./order/
     image: msergei/order-service:v0.3
     command: sh -c "sleep 10; ./manage.py order_matcher;"
-    volumes:
-      - ./order/:/app/
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - order/db.env
+    environment:
+      - POSTGRES_DB=order
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - auth
       - db
       - redis
       - order
       - mediator
+    networks:
+      - monitor-net
 
   signer:
-    build:
-      context: ./order/
     image: msergei/order-service:v0.3
     command: sh -c "sleep 10; ./manage.py order_signer;"
-    volumes:
-      - ./order/:/app/
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - order/db.env
+    environment:
+      - POSTGRES_DB=order
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - auth
       - db
@@ -145,19 +145,19 @@ services:
       - order
       - mediator
       - matcher
+    networks:
+      - monitor-net
 
   fetcher:
-    build:
-      context: ./notify/
     image: msergei/notify-service:v0.3
     command: sh -c "sleep 10; ./manage.py fetch_events;"
-    volumes:
-      - ./notify/:/app/
     links:
       - db:postgres
       - redis:redis
-    env_file:
-      - notify/db.env
+    environment:
+      - POSTGRES_DB=notify
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
     depends_on:
       - redis
       - db
@@ -167,3 +167,5 @@ services:
       - mediator
       - signer
       - matcher
+    networks:
+      - monitor-net

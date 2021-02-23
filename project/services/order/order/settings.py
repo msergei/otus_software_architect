@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'order',
+    'django_prometheus',
 ]
 
 MIDDLEWARE = [
@@ -122,3 +123,6 @@ REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
 ALLOWED_HOSTS = ['*']
 
 SYSTEM_FEE = 1.0
+
+MIDDLEWARE = ['django_prometheus.middleware.PrometheusBeforeMiddleware'] + \
+             MIDDLEWARE + ['django_prometheus.middleware.PrometheusAfterMiddleware']

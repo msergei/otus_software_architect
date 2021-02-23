@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'uauth.apps.UauthConfig',
+    'django_prometheus',
 ]
 
 MIDDLEWARE = [
@@ -118,4 +119,5 @@ DATABASES = {
     }
 }
 
-KAFKA_HOST = f"{os.environ.get('KAFKA_HOST', 'kafka-host')}:9092"
+MIDDLEWARE = ['django_prometheus.middleware.PrometheusBeforeMiddleware'] + \
+             MIDDLEWARE + ['django_prometheus.middleware.PrometheusAfterMiddleware']

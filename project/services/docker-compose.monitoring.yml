@@ -1,12 +1,9 @@
 version: '2.1'
 
-networks:
-  monitor-net:
-    driver: bridge
-
 volumes:
   psql: {}
   redis: {}
+  logs: {}
 
 services:
 
@@ -167,5 +164,23 @@ services:
       - mediator
       - signer
       - matcher
+    networks:
+      - monitor-net
+
+  nginx:
+    image: msergei/nginx:v0.1
+    ports:
+      - 80:80
+    links:
+      - auth:auth
+      - order:order
+      - notify:notify
+    restart: always
+    volumes:
+      - logs:/var/log/nginx
+    depends_on:
+      - auth
+      - notify
+      - order
     networks:
       - monitor-net

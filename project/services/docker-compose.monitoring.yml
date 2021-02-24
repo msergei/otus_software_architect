@@ -184,3 +184,16 @@ services:
       - order
     networks:
       - monitor-net
+
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:0.4.2
+    networks:
+      - monitor-net
+    environment:
+      - SCRAPE_URI=http://nginx:80/nginx_status
+      - TELEMETRY_PATH=/metrics
+      - NGINX_RETRIES=10
+    ports:
+      - 9113:9113
+    links:
+      - nginx:nginx

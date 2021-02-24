@@ -1,6 +1,6 @@
 global:
-  scrape_interval:     15s
-  evaluation_interval: 15s
+  scrape_interval:     5s
+  evaluation_interval: 5s
 
   # Attach these labels to any time series or alerts when communicating with
   # external systems (federation, remote storage, Alertmanager).
@@ -41,6 +41,12 @@ scrape_configs:
         - auth:8000
         - order:8000
         - notify:8000
+
+  - job_name: 'nginx'
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        - nginx_exporter:9113
 
 alerting:
   alertmanagers:
